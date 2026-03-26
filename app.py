@@ -125,9 +125,13 @@ section[data-testid="stSidebar"] {{
 
 def load_and_clean(file) -> pd.DataFrame:
     """Load CSV, detect date column, sort, forward-fill missing values."""
-   df = pd.read_csv(file, encoding="utf-8-sig")
-   df.columns = [c.strip() for c in df.columns]
-    # Auto-detect the date column (case-insensitive)
+    try:
+        df = pd.read_csv(file, encoding="utf-8-sig")
+    except Exception:
+        df = pd.read_csv(file)
+
+    df.columns = [c.strip() for c in df.columns]
+
     date_col = next(
         (c for c in df.columns if c.lower() in ("date", "timestamp", "time", "datetime")),
         None
@@ -136,9 +140,8 @@ def load_and_clean(file) -> pd.DataFrame:
         st.error("❌ No 'Date' column found. CSV must have: Date, Open, High, Low, Close, Volume")
         st.stop()
 
-    # FIX 1: infer_datetime_format=True is deprecated since pandas 2.0 — removed
-    df[date_col] = pd.to_datetime(df[date_col])
     df[date_col] = pd.to_datetime(df[date_col], dayfirst=True)
+    df = df.rename(columns={date_col: "Date"}).set_index("Date").sort_index()
     df.columns = [c.strip().title() for c in df.columns]
 
     required = ["Open", "High", "Low", "Close", "Volume"]
